@@ -33,6 +33,11 @@ function readJsonBody(req) {
 }
 
 async function handleApi(req, res, pathname) {
+    if (req.method === "GET" && pathname === "/api/health") {
+        const health = await storage.getHealth();
+        return sendJson(res, health.ok ? 200 : 500, health);
+    }
+
     if (req.method === "GET" && pathname === "/api/state") {
         const current = await storage.getState({ initialize: false });
         return sendJson(res, 200, {

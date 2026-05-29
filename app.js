@@ -315,8 +315,8 @@ const SessionSync = {
     },
 
     // Generate active student updates to local logs database
-    updateStudentInLogs: (session) => {
-        if (!session) return;
+    updateStudentInLogs: async (session) => {
+        if (!session) return false;
         const record = SessionSync.buildStudentRecord(session);
         const rawSessions = localStorage.getItem("eg_proctoring_sessions");
         let list = [];
@@ -336,7 +336,7 @@ const SessionSync = {
         list.push(record);
         
         localStorage.setItem("eg_proctoring_sessions", JSON.stringify(list));
-        ServerSync.saveSession(record);
+        return ServerSync.saveSession(record);
     },
 
     // Retrieve active student session from local database
@@ -1480,7 +1480,7 @@ const ExamRunner = {
     },
 
     // Submit Exam evaluation logic
-    submitExam: (forced = false, forceReason = "") => {
+    submitExam: async (forced = false, forceReason = "") => {
         if (!AppState.studentSession) return;
 
         clearInterval(AppState.timerInterval);
@@ -1518,7 +1518,13 @@ const ExamRunner = {
         CryptoHelper.saveEncrypted("eg_active_session", AppState.studentSession);
         
         // Sync logs
-        SessionSync.updateStudentInLogs(AppState.studentSession);
+        const syncedToServer = await SessionSync.updateStudentInLogs(AppState.studentSession);
+        if (!syncedToServer) {
+            AppState.studentSession.warningHistory.push({
+                event: "Sinkronisasi server gagal saat submit final",
+                time: new Date().toLocaleTimeString()
+            });
+        }
 
         // Remove active session reference so they can login clean next time
         localStorage.removeItem("eg_active_session");

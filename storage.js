@@ -323,11 +323,47 @@ async function clearSessions() {
     return [];
 }
 
+async function getHealth() {
+    const base = {
+        ok: true,
+        storageMode: isDatabaseEnabled() ? "database" : "local-file",
+        databaseConfigured: isDatabaseEnabled(),
+        timestamp: new Date().toISOString()
+    };
+
+    if (!isDatabaseEnabled()) {
+        const current = await getState({ initialize: false });
+        return {
+            ...base,
+            initialized: Boolean(current),
+            sessionCount: current && Array.isArray(current.sessions) ? current.sessions.length : 0
+        };
+    }
+
+    try {
+        const current = await loadDatabaseState({ initialize: true });
+        return {
+            ...base,
+            databaseConnected: true,
+            initialized: Boolean(current),
+            sessionCount: current && Array.isArray(current.sessions) ? current.sessions.length : 0
+        };
+    } catch (err) {
+        return {
+            ...base,
+            ok: false,
+            databaseConnected: false,
+            error: err.message
+        };
+    }
+}
+
 module.exports = {
     DEFAULT_SETTINGS,
     DEFAULT_QUESTIONS,
     bootstrapState,
     clearSessions,
+    getHealth,
     getState,
     isDatabaseEnabled,
     updateQuestions,
