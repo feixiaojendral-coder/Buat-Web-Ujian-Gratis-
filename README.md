@@ -22,7 +22,7 @@ Jalur gratis yang disarankan:
 
 - GitHub untuk menyimpan kode.
 - Supabase Free untuk database.
-- Render Free Web Service untuk menjalankan Node.js.
+- Vercel Hobby untuk menjalankan web dan API.
 
 GitHub Pages saja tidak cukup karena aplikasi ini butuh backend `server.js`.
 
@@ -36,28 +36,31 @@ GitHub Pages saja tidak cukup karena aplikasi ini butuh backend `server.js`.
 
 Server akan membuat tabel otomatis saat pertama kali jalan. Kalau mau membuat manual, jalankan isi file `supabase-schema.sql` di SQL Editor Supabase.
 
-## Deploy ke Render
+## Deploy ke Vercel
 
 1. Push repo ini ke GitHub.
-2. Login ke Render.
-3. Pilih `New Web Service`.
-4. Connect ke repository GitHub ini.
-5. Isi pengaturan:
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-   - Plan: `Free`
-6. Tambahkan environment variable:
+2. Login ke Vercel memakai GitHub.
+3. Pilih `Add New` lalu `Project`.
+4. Import repository GitHub ini.
+5. Biarkan pengaturan build default, atau kosongkan `Build Command` jika diminta.
+6. Tambahkan environment variable sebelum deploy:
    - `DATABASE_URL`: connection string Supabase
    - `PGSSLMODE`: `require`
-7. Deploy.
+7. Klik `Deploy`.
 
 Setelah deploy selesai:
 
-- Admin: `https://nama-app.onrender.com/admin.html`
+- Admin: `https://nama-app.vercel.app/admin.html`
 - Siswa: pakai link ujian yang dibuat dari halaman admin.
 
 ## Catatan Penting
 
-Render Free bisa tidur kalau tidak dipakai beberapa menit. Sebelum ujian dimulai, buka halaman admin lebih dulu dan tunggu sampai web aktif.
-
 Jangan upload `.env` atau `data/exam-state.json` ke GitHub karena bisa berisi data ujian dan jawaban siswa.
+
+## Alternatif Render
+
+Kalau Render tidak meminta kartu, repo ini juga tetap bisa jalan di Render:
+
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Environment variable: `DATABASE_URL` dan `PGSSLMODE=require`
