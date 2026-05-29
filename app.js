@@ -1713,7 +1713,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const dbStudent = await SessionSync.getStudentFromServer(AppState.studentSession);
             if (!dbStudent) return;
 
-            if (AppState.currentView === "lock-view" && dbStudent.status === "active") {
+            if (dbStudent.status === "submitted") {
+                alert("Pengawas telah mengumpulkan lembar ujian Anda secara paksa.");
+                ExamRunner.submitExam(true, "Dikumpulkan paksa oleh admin");
+            } else if (AppState.currentView === "lock-view" && dbStudent.status === "active") {
                 alert("Admin sudah menyetujui. Ujian Anda dibuka kembali.");
                 SecurityEngine.requestFullscreen(document.documentElement).then(success => {
                     AppState.studentSession.status = "active";
@@ -1732,9 +1735,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         alert("Silakan aktifkan layar penuh lagi agar ujian bisa lanjut dengan aman.");
                     }
                 });
-            } else if (AppState.currentView === "exam-view" && dbStudent.status === "submitted") {
-                alert("Pengawas telah mengumpulkan lembar ujian Anda secara paksa.");
-                ExamRunner.submitExam(true, "Dikumpulkan paksa oleh admin");
             }
         } finally {
             AppState.remoteControlPollBusy = false;
