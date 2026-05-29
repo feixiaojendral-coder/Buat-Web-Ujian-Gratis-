@@ -565,10 +565,16 @@ const AdminPanel = {
             logHistoryList += `</div>`;
 
             let actionButtons = ``;
+            const sessionKey = encodeURIComponent(std.sessionId || std.nis || "");
             if (std.status === "locked") {
-                actionButtons = `<button onclick="AdminPanel.remoteUnlock('${std.nis}')" class="btn-success" style="padding:4px 8px; font-size:0.75rem;">Buka Kunci</button>`;
+                actionButtons = `
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <button onclick="AdminPanel.remoteUnlock('${sessionKey}')" class="btn-success" style="padding:4px 8px; font-size:0.75rem;">ACC Buka Kunci</button>
+                        <button onclick="AdminPanel.remoteForceSubmit('${sessionKey}')" class="btn-danger-outline" style="padding:4px 8px; font-size:0.75rem;">Kumpul Paksa</button>
+                    </div>
+                `;
             } else if (std.status === "active") {
-                actionButtons = `<button onclick="AdminPanel.remoteForceSubmit('${std.nis}')" class="btn-danger-outline" style="padding:4px 8px; font-size:0.75rem;">Kumpul Paksa</button>`;
+                actionButtons = `<button onclick="AdminPanel.remoteForceSubmit('${sessionKey}')" class="btn-danger-outline" style="padding:4px 8px; font-size:0.75rem;">Kumpul Paksa</button>`;
             } else {
                 actionButtons = `<span class="text-muted">-</span>`;
             }
@@ -591,45 +597,79 @@ const AdminPanel = {
         document.getElementById("stat-locked-students").textContent = locked;
     },
 
-    remoteUnlock: (nis) => {
+    findSessionIndexByKey: (list, encodedKey) => {
+        const key = decodeURIComponent(encodedKey || "");
+        return list.findIndex(std => std.sessionId === key || std.nis === key);
+    },
+
+    remoteUnlock: async (encodedKey) => {
+        await ServerSync.loadSessions();
         const raw = localStorage.getItem("eg_proctoring_sessions");
         if (!raw) return;
         try {
             let list = JSON.parse(raw) || [];
-            const index = list.findIndex(std => std.nis === nis);
+            const index = AdminPanel.findSessionIndexByKey(list, encodedKey);
             if (index !== -1) {
                 list[index].status = "active";
+                list[index].warningHistory = Array.isArray(list[index].warningHistory) ? list[index].warningHistory : [];
                 list[index].warningHistory.push({
-                    event: "Dibuka kunci secara remote oleh pengawas",
+                    event: "ACC buka kunci oleh admin",
                     time: new Date().toLocaleTimeString()
                 });
                 localStorage.setItem("eg_proctoring_sessions", JSON.stringify(list));
-                ServerSync.saveSession(list[index]);
-                AdminPanel.loadProctoringLogs();
+                await ServerSync.saveSession(list[index]);
+                AdminPanel.loadProctoringLogs(true);
             }
         } catch(e) {}
     },
 
-    remoteForceSubmit: (nis) => {
+    buildRemoteSubmitRecord: (session) => {
+        const now = new Date();
+        const answerDetails = AdminPanel.buildAnswerDetailsFromStoredAnswers(session);
+        const totalScorePoints = answerDetails.reduce((sum, detail) => sum + Number(detail.points || 0), 0);
+        const earnedPoints = answerDetails.reduce((sum, detail) => sum + Number(detail.earnedPoints || 0), 0);
+        const answeredCount = answerDetails.filter(detail => detail.isAnswered).length;
+        const warningHistory = Array.isArray(session.warningHistory) ? session.warningHistory : [];
+
+        warningHistory.push({
+            event: "Dikumpulkan paksa oleh admin",
+            time: now.toLocaleTimeString()
+        });
+
+        return {
+            ...session,
+            status: "submitted",
+            submitMethod: "Paksa / Admin",
+            forceReason: "Dikumpulkan paksa oleh admin",
+            endTime: now.toLocaleTimeString(),
+            endDate: now.toLocaleDateString(),
+            endIso: now.toISOString(),
+            answerDetails,
+            answeredCount,
+            unansweredCount: Math.max(0, answerDetails.length - answeredCount),
+            totalQuestions: answerDetails.length,
+            totalScorePoints,
+            earnedPoints,
+            score: totalScorePoints > 0 ? Math.round((earnedPoints / totalScorePoints) * 100) : 0,
+            warningHistory
+        };
+    },
+
+    remoteForceSubmit: async (encodedKey) => {
         const confirmForce = confirm("Apakah Anda yakin ingin mengumpulkan paksa lembar ujian siswa ini?");
         if (!confirmForce) return;
 
+        await ServerSync.loadSessions();
         const raw = localStorage.getItem("eg_proctoring_sessions");
         if (!raw) return;
         try {
             let list = JSON.parse(raw) || [];
-            const index = list.findIndex(std => std.nis === nis);
+            const index = AdminPanel.findSessionIndexByKey(list, encodedKey);
             if (index !== -1) {
-                list[index].status = "submitted";
-                list[index].endTime = new Date().toLocaleTimeString();
-                list[index].warningHistory.push({
-                    event: "Dikumpulkan paksa secara remote oleh pengawas",
-                    time: new Date().toLocaleTimeString()
-                });
-                
+                list[index] = AdminPanel.buildRemoteSubmitRecord(list[index]);
                 localStorage.setItem("eg_proctoring_sessions", JSON.stringify(list));
-                ServerSync.saveSession(list[index]);
-                AdminPanel.loadProctoringLogs();
+                await ServerSync.saveSession(list[index]);
+                AdminPanel.loadProctoringLogs(true);
             }
         } catch(e) {}
     },
@@ -1254,7 +1294,6 @@ const AdminPanel = {
         document.getElementById("set-exam-duration").value = AppState.settings.duration;
         document.getElementById("set-max-warnings").value = AppState.settings.maxWarnings;
         document.getElementById("set-exam-token").value = AppState.settings.token;
-        document.getElementById("set-supervisor-pin").value = AppState.settings.supervisorPin;
 
         document.getElementById("policy-auto-submit-fullscreen").checked = AppState.settings.policyAutoSubmitFullscreen;
         document.getElementById("policy-show-score-end").checked = AppState.settings.policyShowScoreEnd;
@@ -1268,7 +1307,6 @@ const AdminPanel = {
         AppState.settings.duration = Number(document.getElementById("set-exam-duration").value);
         AppState.settings.maxWarnings = Number(document.getElementById("set-max-warnings").value);
         AppState.settings.token = document.getElementById("set-exam-token").value.trim().toUpperCase();
-        AppState.settings.supervisorPin = document.getElementById("set-supervisor-pin").value;
 
         AppState.settings.policyAutoSubmitFullscreen = document.getElementById("policy-auto-submit-fullscreen").checked;
         AppState.settings.policyShowScoreEnd = document.getElementById("policy-show-score-end").checked;

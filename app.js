@@ -143,6 +143,7 @@ const AppState = {
     adminSessionActive: false,
     proctoringInterval: null,
     examGateInterval: null,
+    remoteControlPollBusy: false,
     fullscreenSupported: true,
     questionGridPage: 0,
     questionGridPageSize: 20,
@@ -269,6 +270,17 @@ const ServerSync = {
         } catch (err) {
             return false;
         }
+    },
+
+    loadSessions: async () => {
+        try {
+            const data = await ServerSync.request("/api/sessions");
+            if (!data || !Array.isArray(data.sessions)) return false;
+            localStorage.setItem("eg_proctoring_sessions", JSON.stringify(data.sessions));
+            return data.sessions;
+        } catch (err) {
+            return false;
+        }
     }
 };
 
@@ -339,16 +351,41 @@ const SessionSync = {
         return ServerSync.saveSession(record);
     },
 
+    findStudentRecord: (list, sessionOrNis) => {
+        if (!Array.isArray(list)) return null;
+        const session = typeof sessionOrNis === "object" && sessionOrNis ? sessionOrNis : null;
+        const nis = session ? session.nis : sessionOrNis;
+        const sessionId = session ? session.sessionId : null;
+        const examId = session ? session.examId : null;
+
+        if (sessionId) {
+            const exact = list.find(item => item.sessionId === sessionId);
+            if (exact) return exact;
+        }
+
+        return list.find(item => {
+            if (item.nis !== nis) return false;
+            if (examId && item.examId && item.examId !== examId) return false;
+            return true;
+        }) || null;
+    },
+
     // Retrieve active student session from local database
-    getStudentFromLogs: (nis) => {
+    getStudentFromLogs: (sessionOrNis) => {
         const rawSessions = localStorage.getItem("eg_proctoring_sessions");
         if (!rawSessions) return null;
         try {
             const list = JSON.parse(rawSessions);
-            return list.find(item => item.nis === nis);
+            return SessionSync.findStudentRecord(list, sessionOrNis);
         } catch(e) {
             return null;
         }
+    },
+
+    getStudentFromServer: async (session) => {
+        const list = await ServerSync.loadSessions();
+        if (!list) return SessionSync.getStudentFromLogs(session);
+        return SessionSync.findStudentRecord(list, session);
     },
 
     // Remove active student session
@@ -1330,49 +1367,12 @@ const ExamRunner = {
 
         // Shift views
         document.getElementById("lock-violation-details").textContent = reason;
-        document.getElementById("unlock-pin").value = "";
-        document.getElementById("unlock-error-msg").classList.add("hidden");
         
         ViewManager.showView("lock-view");
         
         // Deactivate window focus trackers temporarily while locked
         window.removeEventListener("blur", SecurityEngine.handleWindowBlur);
         document.removeEventListener("visibilitychange", SecurityEngine.handleVisibilityChange);
-    },
-
-    attemptUnlockExam: () => {
-        const pin = document.getElementById("unlock-pin").value;
-        const correctPin = AppState.settings.supervisorPin;
-
-        if (pin === correctPin) {
-            // Unlock success
-            document.getElementById("unlock-error-msg").classList.add("hidden");
-            
-            // Re-request fullscreen to resume
-            SecurityEngine.requestFullscreen(document.documentElement).then(success => {
-                if (success) {
-                    AppState.studentSession.status = "active";
-                    AppState.studentSession.warningHistory.push({
-                        event: "Ujian dibuka kembali oleh pengawas",
-                        time: new Date().toLocaleTimeString()
-                    });
-                    
-                    CryptoHelper.saveEncrypted("eg_active_session", AppState.studentSession);
-                    SessionSync.updateStudentInLogs(AppState.studentSession);
-
-                    // Re-bind safety listeners
-                    window.addEventListener("blur", SecurityEngine.handleWindowBlur);
-                    document.addEventListener("visibilitychange", SecurityEngine.handleVisibilityChange);
-
-                    ViewManager.showView("exam-view");
-                } else {
-                    alert("Akses Fullscreen Ditolak! Layar tetap terkunci.");
-                }
-            });
-        } else {
-            document.getElementById("unlock-error-msg").classList.remove("hidden");
-            SecurityEngine.beep();
-        }
     },
 
     // Prompt submit confirmation box
@@ -1695,14 +1695,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("cheat-warning-modal").classList.add("hidden");
     });
 
-    // 8. Locked View Unlock Input Bindings
-    document.getElementById("submit-unlock-pin-btn").addEventListener("click", ExamRunner.attemptUnlockExam);
-    document.getElementById("unlock-pin").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") ExamRunner.attemptUnlockExam();
-    });
-
-
-
     // 10. Result Screen return button
     document.getElementById("return-home-btn").addEventListener("click", () => {
         ViewManager.showView("login-view");
@@ -1710,36 +1702,42 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("student-login-form").reset();
     });
 
-    // Local proctoring auto-unlock listener for student active sessions
-    // Checks if admin remotely altered student status to active
-    setInterval(() => {
-        if (AppState.currentView === "lock-view" && AppState.studentSession) {
-            const dbStudent = SessionSync.getStudentFromLogs(AppState.studentSession.nis);
-            if (dbStudent && dbStudent.status === "active") {
-                // Teacher unlocked them from admin panel!
-                alert("Ujian Anda telah dibuka kembali oleh Pengawas secara jarak jauh.");
+    // Remote proctoring listener. Commands are read from the server so admin
+    // actions work across different devices, not only within one browser.
+    setInterval(async () => {
+        if (!AppState.studentSession || AppState.remoteControlPollBusy) return;
+        if (AppState.currentView !== "lock-view" && AppState.currentView !== "exam-view") return;
+
+        AppState.remoteControlPollBusy = true;
+        try {
+            const dbStudent = await SessionSync.getStudentFromServer(AppState.studentSession);
+            if (!dbStudent) return;
+
+            if (AppState.currentView === "lock-view" && dbStudent.status === "active") {
+                alert("Admin sudah menyetujui. Ujian Anda dibuka kembali.");
                 SecurityEngine.requestFullscreen(document.documentElement).then(success => {
                     AppState.studentSession.status = "active";
                     AppState.studentSession.warningHistory.push({
-                        event: "Dibuka kunci secara remote oleh pengawas",
+                        event: "Dibuka kembali setelah ACC admin",
                         time: new Date().toLocaleTimeString()
                     });
                     CryptoHelper.saveEncrypted("eg_active_session", AppState.studentSession);
+                    SessionSync.updateStudentInLogs(AppState.studentSession);
 
-                    // Re-bind safety listeners
                     window.addEventListener("blur", SecurityEngine.handleWindowBlur);
                     document.addEventListener("visibilitychange", SecurityEngine.handleVisibilityChange);
 
                     ViewManager.showView("exam-view");
+                    if (!success) {
+                        alert("Silakan aktifkan layar penuh lagi agar ujian bisa lanjut dengan aman.");
+                    }
                 });
-            }
-        } else if (AppState.currentView === "exam-view" && AppState.studentSession) {
-            const dbStudent = SessionSync.getStudentFromLogs(AppState.studentSession.nis);
-            if (dbStudent && dbStudent.status === "submitted") {
-                // Teacher forced submit from admin panel!
+            } else if (AppState.currentView === "exam-view" && dbStudent.status === "submitted") {
                 alert("Pengawas telah mengumpulkan lembar ujian Anda secara paksa.");
-                ExamRunner.submitExam(true, "Dikumpulkan paksa secara remote oleh pengawas");
+                ExamRunner.submitExam(true, "Dikumpulkan paksa oleh admin");
             }
+        } finally {
+            AppState.remoteControlPollBusy = false;
         }
     }, 1500);
 

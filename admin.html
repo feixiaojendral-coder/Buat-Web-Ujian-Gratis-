@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260529-navfix1">
+    <link rel="stylesheet" href="styles.css?v=20260529-remote1">
 </head>
 <body class="dark-theme">
 
@@ -182,7 +182,7 @@
                                 <h2>Daftar Soal Ujian (<span id="admin-total-questions-tag">0</span> Soal)</h2>
                             </div>
                             <div class="right-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                <a href="template_soal_quizizz.xlsx?v=20260529-navfix1" download="template_soal_quizizz.xlsx" class="btn-secondary-outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; font-size: 0.9rem;">
+                                <a href="template_soal_quizizz.xlsx?v=20260529-remote1" download="template_soal_quizizz.xlsx" class="btn-secondary-outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; font-size: 0.9rem;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                     <span>Unduh Template Excel</span>
                                 </a>
@@ -323,10 +323,6 @@
                                         <label for="set-exam-token">Token Akses Ujian</label>
                                         <input type="text" id="set-exam-token" minlength="4" maxlength="10" value="EGUARD" style="text-transform: uppercase;" required>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="set-supervisor-pin">PIN Pembuka Kunci (Cheat Lock Bypass)</label>
-                                        <input type="password" id="set-supervisor-pin" value="1234" minlength="4" required>
-                                    </div>
                                     <button type="submit" class="btn-primary">Simpan Konfigurasi</button>
                                 </form>
                             </div>
@@ -428,8 +424,8 @@
     </div>
 
     <!-- Supervisor Specific Logic JS -->
-    <script src="xlsx.full.min.js?v=20260529-navfix1"></script>
-    <script src="exceljs.min.js?v=20260529-navfix1"></script>
-    <script src="admin_app.js?v=20260529-navfix1"></script>
+    <script src="xlsx.full.min.js?v=20260529-remote1"></script>
+    <script src="exceljs.min.js?v=20260529-remote1"></script>
+    <script src="admin_app.js?v=20260529-remote1"></script>
 </body>
 </html>

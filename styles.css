@@ -1262,6 +1262,19 @@ input:checked + .slider:before {
     margin-bottom: 12px;
 }
 
+.remote-approval-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: var(--warning-glow);
+    color: var(--warning);
+    font-weight: 700;
+}
+
 .error-text {
     color: var(--danger);
     font-size: 0.85rem;

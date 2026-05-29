@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260529-navfix1">
+    <link rel="stylesheet" href="styles.css?v=20260529-remote1">
 </head>
 <body class="dark-theme">
     
@@ -214,12 +214,8 @@
                 </div>
 
                 <div class="lock-action-container">
-                    <p>Silakan hubungi Pengawas Ujian untuk memasukkan PIN Pembuka Kunci.</p>
-                    <div class="pin-input-group">
-                        <input type="password" id="unlock-pin" placeholder="Masukkan PIN Pengawas" autocomplete="off" maxlength="8">
-                        <button id="submit-unlock-pin-btn" class="btn-primary">Buka Kunci</button>
-                    </div>
-                    <div id="unlock-error-msg" class="error-text hidden">PIN Pengawas Salah! Ujian tetap terkunci.</div>
+                    <p>Silakan hubungi pengawas. Ujian hanya bisa dibuka kembali setelah admin menekan ACC dari dashboard.</p>
+                    <div class="remote-approval-status">Menunggu persetujuan admin...</div>
                 </div>
             </div>
         </section>
@@ -349,6 +345,6 @@
     </div>
 
     <!-- Main JavaScript Logic -->
-    <script src="app.js?v=20260529-navfix1"></script>
+    <script src="app.js?v=20260529-remote1"></script>
 </body>
 </html>
