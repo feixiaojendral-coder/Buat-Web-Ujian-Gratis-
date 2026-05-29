@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+
+# Data lokal tidak ikut dipush supaya jawaban siswa dan sesi ujian tidak bocor.
+data/*.json
