@@ -42,11 +42,12 @@ Server akan membuat tabel otomatis saat pertama kali jalan. Kalau mau membuat ma
 2. Login ke Vercel memakai GitHub.
 3. Pilih `Add New` lalu `Project`.
 4. Import repository GitHub ini.
-5. Biarkan pengaturan build default, atau kosongkan `Build Command` jika diminta.
-6. Tambahkan environment variable sebelum deploy:
+5. Pilih preset `Other`. Jika Vercel menebak `Node`, tidak apa-apa karena `vercel.json` akan memaksa preset `Other`.
+6. Biarkan pengaturan build default, atau kosongkan `Build Command` jika diminta.
+7. Tambahkan environment variable sebelum deploy:
    - `DATABASE_URL`: connection string Supabase
    - `PGSSLMODE`: `require`
-7. Klik `Deploy`.
+8. Klik `Deploy`.
 
 Setelah deploy selesai:
 
